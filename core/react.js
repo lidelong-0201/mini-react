@@ -28,25 +28,21 @@ const render = (el, container) => {
   };
 };
 
-function perFormWorkOfUnit(fiber) {
-  //1. 渲染dom  首次进入时可能会有dom
-  if (!fiber?.dom) {
-    const dom = (fiber.dom =
-      fiber.type === 'TEXT_ELEMENT'
-        ? document.createTextNode('')
-        : document.createElement(fiber.type));
+const createDom = (fiber) => {
+  return fiber.type === 'TEXT_ELEMENT'
+    ? document.createTextNode('')
+    : document.createElement(fiber.type);
+};
 
-    fiber.parent.dom.append(dom);
+const updateProps = (props, dom) => {
+  Object.keys(props).forEach((key) => {
+    if (key !== 'children') {
+      dom[key] = props[key];
+    }
+  });
+};
 
-    //2.处理props
-    Object.keys(fiber.props).forEach((key) => {
-      if (key !== 'children') {
-        dom[key] = fiber.props[key];
-      }
-    });
-  }
-
-  //3. 构建指针
+const initChild = (fiber) => {
   const children = fiber.props.children;
 
   let prevChild = null;
@@ -66,6 +62,21 @@ function perFormWorkOfUnit(fiber) {
     }
     prevChild = newWork;
   });
+};
+
+function perFormWorkOfUnit(fiber) {
+  //1. 渲染dom  首次进入时可能会有dom
+  if (!fiber?.dom) {
+    const dom = (fiber.dom = createDom(fiber));
+    fiber.parent.dom.append(dom);
+
+    //2.处理props
+    updateProps(fiber.props, dom);
+  }
+
+  //3. 构建指针
+  initChild(fiber);
+
   //4.返回下一个执行Fiber
   if (fiber.child) {
     return fiber.child;
