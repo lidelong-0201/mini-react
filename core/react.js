@@ -18,6 +18,7 @@ function createElement(type, props, ...children) {
     }
   };
 }
+let root = null;
 // 虚拟dom转换成真实dom
 const render = (el, container) => {
   nextWorkOfUnit = {
@@ -26,6 +27,7 @@ const render = (el, container) => {
       children: [el]
     }
   };
+  root = nextWorkOfUnit;
 };
 
 const createDom = (fiber) => {
@@ -68,7 +70,8 @@ function perFormWorkOfUnit(fiber) {
   //1. 渲染dom  首次进入时可能会有dom
   if (!fiber?.dom) {
     const dom = (fiber.dom = createDom(fiber));
-    fiber.parent.dom.append(dom);
+    // 更换为统一提交
+    // fiber.parent.dom.append(dom);
 
     //2.处理props
     updateProps(fiber.props, dom);
@@ -86,12 +89,42 @@ function perFormWorkOfUnit(fiber) {
   }
   return fiber.parent.sibling;
 }
+
+// 指针指向
 let nextWorkOfUnit = null;
+
+// 提交流程
+const commitWork = (fiber) => {
+  console.log('🙋 ~ commitWork ~ fiber:', fiber);
+  if (!fiber) return;
+  fiber.parent.dom.append(fiber?.dom);
+
+  if (fiber.child) {
+    commitWork(fiber?.child);
+  }
+
+  if (fiber.sibling) {
+    commitWork(fiber?.sibling);
+  }
+  if (fiber.parent.sibling) {
+    commitWork(fiber?.sibling);
+  }
+};
+// 统一提交
+const commitRoot = () => {
+  commitWork(root.child);
+};
+
 const workCallback = (deadLine) => {
   let shouldYield = false;
   while (!shouldYield && nextWorkOfUnit) {
     nextWorkOfUnit = perFormWorkOfUnit(nextWorkOfUnit);
     shouldYield = deadLine.timeRemaining() < 1;
+  }
+  // render 时条件满足不会执行多变
+  if (!nextWorkOfUnit && root) {
+    commitRoot();
+    root = null;
   }
   window.requestIdleCallback(workCallback);
 };
