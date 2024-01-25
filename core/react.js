@@ -19,30 +19,30 @@ function createElement(type, props, ...children) {
     }
   };
 }
-// 根节点
-let root = null;
-// 当前节点
+// work in progress 根据生命周期命名
+let wipRoot = null;
+// 当前根节点
 let currentRoot = null;
 // 虚拟dom转换成真实dom
 const render = (el, container) => {
-  nextWorkOfUnit = {
+  wipRoot = {
     dom: container,
     props: {
       children: [el]
     }
   };
-  root = nextWorkOfUnit;
+  nextWorkOfUnit = wipRoot;
 };
 
 // 生成新树
 const update = () => {
-  nextWorkOfUnit = {
+  wipRoot = {
     dom: currentRoot.dom,
     props: currentRoot.props,
     // 指向旧Fiber节点
     altemate: currentRoot
   };
-  root = nextWorkOfUnit;
+  nextWorkOfUnit = wipRoot;
 };
 
 const createDom = (fiber) => {
@@ -75,7 +75,8 @@ const updateProps = (newProps, preProps = {}, dom) => {
   });
 };
 
-const initChild = (fiber, children) => {
+// 调和过程
+const reconcileChildren = (fiber, children) => {
   let prevChild = null;
 
   // 之前 以赋值 指向旧Fiber节点
@@ -121,7 +122,7 @@ const initChild = (fiber, children) => {
 
 const updateFunctionComponent = (fiber) => {
   const children = [fiber.type(fiber.props)];
-  initChild(fiber, children);
+  reconcileChildren(fiber, children);
 };
 
 const updateHostComponent = (fiber) => {
@@ -138,7 +139,7 @@ const updateHostComponent = (fiber) => {
   //3. 构建指针
   const children = fiber.props.children;
 
-  initChild(fiber, children);
+  reconcileChildren(fiber, children);
 };
 
 function perFormWorkOfUnit(fiber) {
@@ -213,7 +214,7 @@ const commitWork = (fiber) => {
 };
 // 统一提交
 const commitRoot = () => {
-  commitWork(root.child);
+  commitWork(wipRoot.child);
 };
 
 const workCallback = (deadLine) => {
@@ -223,12 +224,12 @@ const workCallback = (deadLine) => {
     shouldYield = deadLine.timeRemaining() < 1;
   }
   // render 时条件满足不会执行多变
-  if (!nextWorkOfUnit && root) {
+  if (!nextWorkOfUnit && wipRoot) {
     commitRoot();
     // 当前节点 构建新旧dom树用
-    currentRoot = root;
+    currentRoot = wipRoot;
 
-    root = null;
+    wipRoot = null;
   }
   window.requestIdleCallback(workCallback);
 };
