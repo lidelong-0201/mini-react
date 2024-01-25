@@ -39,6 +39,10 @@ const createDom = (fiber) => {
 
 const updateProps = (props, dom) => {
   Object.keys(props).forEach((key) => {
+    // 绑定事件
+    if (key.startsWith('on')) {
+      dom.addEventListener(key.slice(2).toLocaleLowerCase(), props[key]);
+    }
     if (key !== 'children') {
       dom[key] = props[key];
     }
