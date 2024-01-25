@@ -19,7 +19,10 @@ function createElement(type, props, ...children) {
     }
   };
 }
+// 根节点
 let root = null;
+// 当前节点
+let currentRoot = null;
 // 虚拟dom转换成真实dom
 const render = (el, container) => {
   nextWorkOfUnit = {
@@ -31,35 +34,82 @@ const render = (el, container) => {
   root = nextWorkOfUnit;
 };
 
+// 生成新树
+const update = () => {
+  nextWorkOfUnit = {
+    dom: currentRoot.dom,
+    props: currentRoot.props,
+    // 指向旧Fiber节点
+    altemate: currentRoot
+  };
+  root = nextWorkOfUnit;
+};
+
 const createDom = (fiber) => {
   return fiber.type === 'TEXT_ELEMENT'
     ? document.createTextNode('')
     : document.createElement(fiber.type);
 };
 
-const updateProps = (props, dom) => {
-  Object.keys(props).forEach((key) => {
-    // 绑定事件
-    if (key.startsWith('on')) {
-      dom.addEventListener(key.slice(2).toLocaleLowerCase(), props[key]);
+const updateProps = (newProps, preProps = {}, dom) => {
+  // 老的有 新的没有
+  Object.keys(preProps).forEach((key) => {
+    // 取消绑定事件
+    if (key.startsWith('on') && !(key in newProps)) {
+      dom.removeEventListener(key.slice(2).toLocaleLowerCase(), preProps[key]);
     }
-    if (key !== 'children') {
-      dom[key] = props[key];
+    if (key !== 'children' && !(key in newProps)) {
+      dom.removeAttribute(key);
+    }
+  });
+  // 绑定新的
+  Object.keys(newProps).forEach((key) => {
+    // 绑定事件
+    if (key.startsWith('on') && newProps[key] !== preProps[key]) {
+      dom.removeEventListener(key.slice(2).toLocaleLowerCase(), preProps[key]);
+      dom.addEventListener(key.slice(2).toLocaleLowerCase(), newProps[key]);
+    }
+    if (key !== 'children' && newProps[key] !== preProps[key]) {
+      dom[key] = newProps[key];
     }
   });
 };
 
 const initChild = (fiber, children) => {
   let prevChild = null;
+
+  // 之前 以赋值 指向旧Fiber节点
+  let oldFiberChild = fiber.altemate?.child;
+
   children.forEach((child, index) => {
-    const newFiber = {
-      parent: fiber,
-      props: child.props,
-      type: child.type,
-      sibling: null,
-      dom: null,
-      child: null
-    };
+    const isSameType = child.type === oldFiberChild?.type;
+    let newFiber;
+    if (isSameType) {
+      newFiber = {
+        parent: fiber,
+        props: child.props,
+        type: child.type,
+        sibling: null,
+        dom: oldFiberChild.dom,
+        child: null,
+        altemate: oldFiberChild,
+        effectTag: 'UPDATE' // 更新操作
+      };
+    } else {
+      newFiber = {
+        parent: fiber,
+        props: child.props,
+        type: child.type,
+        sibling: null,
+        dom: null,
+        child: null,
+        altemate: oldFiberChild,
+        effectTag: 'PLACEMENT' // 新增操作
+      };
+    }
+    // 更新 旧Fiber节点
+    oldFiberChild = oldFiberChild?.sibling;
+
     if (index === 0) {
       fiber.child = newFiber;
     } else {
@@ -82,7 +132,7 @@ const updateHostComponent = (fiber) => {
     // fiber.parent.dom.append(dom);
 
     //2.处理props
-    updateProps(fiber.props, dom);
+    updateProps(fiber.props, {}, dom);
   }
 
   //3. 构建指针
@@ -141,8 +191,13 @@ const commitWork = (fiber) => {
 
   // Function comp 时没有dom节点
   let parentFiber = fiber.parent.dom ? fiber.parent : fiber.parent.parent;
-  if (fiber?.dom) {
+  if (fiber?.dom && fiber.effectTag === 'PLACEMENT') {
     parentFiber.dom.append(fiber?.dom);
+  } else if (fiber.effectTag === 'UPDATE') {
+    // 暂时只处理dom
+    if (typeof fiber.type !== 'function') {
+      updateProps(fiber.props, fiber.altemate.props, fiber.dom);
+    }
   }
 
   if (fiber.child) {
@@ -170,6 +225,9 @@ const workCallback = (deadLine) => {
   // render 时条件满足不会执行多变
   if (!nextWorkOfUnit && root) {
     commitRoot();
+    // 当前节点 构建新旧dom树用
+    currentRoot = root;
+
     root = null;
   }
   window.requestIdleCallback(workCallback);
@@ -180,6 +238,7 @@ window.requestIdleCallback(workCallback);
 const React = {
   createTextNode,
   createElement,
-  render
+  render,
+  update
 };
 export default React;
