@@ -87,7 +87,7 @@ const reconcileChildren = (fiber, children) => {
   let oldFiberChild = fiber.altemate?.child
 
   children.forEach((child, index) => {
-    const isSameType = child.type === oldFiberChild?.type
+    const isSameType = child?.type === oldFiberChild?.type && child.type
 
     let newFiber
     if (isSameType) {
@@ -102,15 +102,17 @@ const reconcileChildren = (fiber, children) => {
         effectTag: 'UPDATE', // 更新操作
       }
     } else {
-      newFiber = {
-        parent: fiber,
-        props: child.props,
-        type: child.type,
-        sibling: null,
-        dom: null,
-        child: null,
-
-        effectTag: 'PLACEMENT', // 新增操作
+      // fiber 可能为boolean
+      if (child) {
+        newFiber = {
+          parent: fiber,
+          props: child.props,
+          type: child.type,
+          sibling: null,
+          dom: null,
+          child: null,
+          effectTag: 'PLACEMENT', // 新增操作
+        }
       }
       if (oldFiberChild) {
         deletions.push(oldFiberChild)
@@ -124,7 +126,9 @@ const reconcileChildren = (fiber, children) => {
     } else {
       prevChild.sibling = newFiber
     }
-    prevChild = newFiber
+    if (newFiber) {
+      prevChild = newFiber
+    }
   })
 }
 
