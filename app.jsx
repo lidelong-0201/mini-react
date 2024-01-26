@@ -1,26 +1,21 @@
-import React from './core/react';
-let num = 0;
-let props = { id: '11111' };
-const Counter = () => {
-  const handleClick = () => {
-    console.log('click');
-    num++;
-    props = {};
-    React.update();
-  };
-  return (
-    <div {...props}>
-      count: {num}
-      <button onClick={handleClick}>click</button>
-    </div>
-  );
-};
-
+import React from './core/react'
+let flag = false
 export default function App() {
+  const Foo = () => <div>Foo</div>
+  const Bar = () => <p>Bar</p>
   return (
     <div>
       App
-      <Counter num={123} />
+      <div> {flag ? <Foo /> : <Bar />}</div>
+      <button
+        onClick={() => {
+          console.log('click')
+          flag = !flag
+          React.update()
+        }}
+      >
+        click
+      </button>
     </div>
-  );
+  )
 }
