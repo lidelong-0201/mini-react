@@ -60,13 +60,21 @@ const useState = (initVal) => {
   const oldHook = currentFiber.altemate?.stateHooks[stateIndex]
   const stateHook = {
     state: oldHook ? oldHook.state : initVal,
+    // 任务队列 收集统一执行
+    queue: oldHook ? oldHook.queue : [],
   }
   stateHooks.push(stateHook)
   stateIndex++
   currentFiber.stateHooks = stateHooks
-
+  // 每次执行React。useState 统一执行action
+  stateHook.queue.forEach((item) => {
+    stateHook.state = item
+  })
   const setState = (val) => {
-    stateHook.state = val
+    // 值相同不更新
+    if (val === stateHook.state) return
+    stateHook.queue.push(val)
+    // stateHook.state = val
     wipRoot = {
       ...currentFiber,
       altemate: currentFiber,

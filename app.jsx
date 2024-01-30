@@ -20,7 +20,7 @@ export default function App() {
         <div>count1:{count1}</div>
         <button
           onClick={() => {
-            setCount1(count1 + 1)
+            setCount1('0')
           }}
         >
           click
