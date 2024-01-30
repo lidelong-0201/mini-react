@@ -26,6 +26,8 @@ let currentRoot = null
 // 指针指向
 let nextWorkOfUnit = null
 
+let wipFunctionFiber = null
+
 // 需要删除的节点
 let deletions = []
 // 虚拟dom转换成真实dom
@@ -41,13 +43,14 @@ const render = (el, container) => {
 
 // 生成新树
 const update = () => {
-  wipRoot = {
-    dom: currentRoot.dom,
-    props: currentRoot.props,
-    // 指向旧Fiber节点
-    altemate: currentRoot,
+  let currentFiber = wipFunctionFiber
+  return () => {
+    wipRoot = {
+      ...currentFiber,
+      altemate: currentFiber,
+    }
+    nextWorkOfUnit = wipRoot
   }
-  nextWorkOfUnit = wipRoot
 }
 
 const createDom = (fiber) => {
@@ -133,6 +136,7 @@ const reconcileChildren = (fiber, children) => {
 }
 
 const updateFunctionComponent = (fiber) => {
+  wipFunctionFiber = fiber
   const children = [fiber.type(fiber.props)]
   reconcileChildren(fiber, children)
 }
@@ -255,6 +259,9 @@ const workCallback = (deadLine) => {
   let shouldYield = false
   while (!shouldYield && nextWorkOfUnit) {
     nextWorkOfUnit = perFormWorkOfUnit(nextWorkOfUnit)
+    if (wipRoot?.sibling?.type === nextWorkOfUnit?.type) {
+      nextWorkOfUnit = null
+    }
     shouldYield = deadLine.timeRemaining() < 1
   }
   // render 时条件满足不会执行多变

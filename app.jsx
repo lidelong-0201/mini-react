@@ -1,28 +1,62 @@
 import React from './core/react'
-let flag = false
+let count1 = 0
+let count2 = 0
 export default function App() {
-  const Foo = () => (
-    <div>
-      Foo
-      <div>child1</div>
-      <div>child2</div>
-    </div>
-  )
-  const Bar = () => <p>Bar</p>
+  const Foo = () => {
+    const update = React.update()
+
+    console.log('foo')
+    return (
+      <div>
+        <button
+          onClick={() => {
+            count1++
+            update()
+          }}
+        >
+          click
+        </button>
+      </div>
+    )
+  }
+  const Foo1 = () => {
+    const update = React.update()
+    return (
+      <div>
+        <button
+          onClick={() => {
+            count1++
+            update()
+          }}
+        >
+          click
+        </button>
+      </div>
+    )
+  }
+  const Bar = () => {
+    const update = React.update()
+
+    console.log('bar')
+    return (
+      <div>
+        <button
+          onClick={() => {
+            count2++
+            update()
+          }}
+        >
+          click
+        </button>
+      </div>
+    )
+  }
   return (
     <div>
       App
-      {/* <div> {flag ? <Foo /> : <Bar />}</div> */}
-      {flag && <Foo />}
-      <button
-        onClick={() => {
-          console.log('click')
-          flag = !flag
-          React.update()
-        }}
-      >
-        click
-      </button>
+      <Foo />
+      <Foo1 />
+      <Bar />
     </div>
   )
 }
