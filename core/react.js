@@ -52,6 +52,29 @@ const update = () => {
     nextWorkOfUnit = wipRoot
   }
 }
+// 每次更新处理function 会重制为【】
+let stateHooks = []
+let stateIndex = 0
+const useState = (initVal) => {
+  let currentFiber = wipFunctionFiber
+  const oldHook = currentFiber.altemate?.stateHooks[stateIndex]
+  const stateHook = {
+    state: oldHook ? oldHook.state : initVal,
+  }
+  stateHooks.push(stateHook)
+  stateIndex++
+  currentFiber.stateHooks = stateHooks
+
+  const setState = (val) => {
+    stateHook.state = val
+    wipRoot = {
+      ...currentFiber,
+      altemate: currentFiber,
+    }
+    nextWorkOfUnit = wipRoot
+  }
+  return [stateHook.state, setState]
+}
 
 const createDom = (fiber) => {
   return fiber.type === 'TEXT_ELEMENT'
@@ -90,7 +113,7 @@ const reconcileChildren = (fiber, children) => {
   let oldFiberChild = fiber.altemate?.child
 
   children.forEach((child, index) => {
-    const isSameType = child?.type === oldFiberChild?.type && child.type
+    const isSameType = child?.type === oldFiberChild?.type && !!child?.type
 
     let newFiber
     if (isSameType) {
@@ -136,6 +159,8 @@ const reconcileChildren = (fiber, children) => {
 }
 
 const updateFunctionComponent = (fiber) => {
+  stateHooks = []
+  stateIndex = 0
   wipFunctionFiber = fiber
   const children = [fiber.type(fiber.props)]
   reconcileChildren(fiber, children)
@@ -278,5 +303,6 @@ const React = {
   createElement,
   render,
   update,
+  useState,
 }
 export default React
