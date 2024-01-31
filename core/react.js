@@ -84,6 +84,17 @@ const useState = (initVal) => {
   return [stateHook.state, setState]
 }
 
+let effectHooks = []
+const useEffect = (callback, deps) => {
+  const effectHook = {
+    callback,
+    deps,
+    cleanup: undefined,
+  }
+  effectHooks.push(effectHook)
+  wipFunctionFiber.effectHooks = effectHooks
+}
+
 const createDom = (fiber) => {
   return fiber.type === 'TEXT_ELEMENT'
     ? document.createTextNode('')
@@ -169,6 +180,7 @@ const reconcileChildren = (fiber, children) => {
 const updateFunctionComponent = (fiber) => {
   stateHooks = []
   stateIndex = 0
+  effectHooks = []
   wipFunctionFiber = fiber
   const children = [fiber.type(fiber.props)]
   reconcileChildren(fiber, children)
@@ -267,21 +279,58 @@ const commitWork = (fiber) => {
   }
 }
 
+const commitCleanup = (fiber) => {
+  console.log('🚀 ~ commitCleanup ~ fiber:', fiber)
+  fiber?.effectHooks?.forEach((hooks) => {
+    console.log('🚀 ~ fiber?.effectHooks?.forEach ~ hooks:', hooks?.cleanup)
+    hooks?.cleanup && hooks.cleanup()
+  })
+}
+
 const commitDeletion = () => {
   deletions.forEach((fiber) => {
     const isFunctionComp = typeof fiber.type === 'function'
 
     const parent = getParent(fiber)
-
     // 函数组件不存在dom
     parent.dom.removeChild(isFunctionComp ? fiber.child.dom : fiber.dom)
+    // 处理effect cleanup
+    commitCleanup(fiber)
   })
+}
+
+const commitEffectWork = (curRoot) => {
+  function run(fiber) {
+    if (!fiber) return
+    if (!fiber.altemate) {
+      //init
+      fiber?.effectHooks?.forEach((hooks) => {
+        hooks.cleanup = hooks.callback?.()
+      })
+    } else {
+      // update
+      const oldEffHooks = fiber?.altemate?.effectHooks
+      fiber?.effectHooks?.forEach((hooks, index) => {
+        if (
+          hooks.deps?.some(
+            (dep, depIndex) => dep !== oldEffHooks[index]?.deps[depIndex],
+          )
+        ) {
+          hooks.cleanup = hooks.callback?.()
+        }
+      })
+    }
+    run(fiber?.child)
+    run(fiber?.sibling)
+  }
+  run(curRoot)
 }
 
 // 统一提交
 const commitRoot = () => {
   commitDeletion()
   commitWork(wipRoot.child)
+  commitEffectWork(wipRoot)
   // 当前节点 构建新旧dom树用
   currentRoot = wipRoot
   wipRoot = null
@@ -312,5 +361,6 @@ const React = {
   render,
   update,
   useState,
+  useEffect,
 }
 export default React
